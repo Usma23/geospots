@@ -30,7 +30,7 @@ venv/Scripts/python.exe -m pip install -r requirements.txt   # Linux/Mac: venv/b
 venv/Scripts/python.exe -m uvicorn app.main:app --port 8090
 ```
 
-Luego abre http://localhost:8090. La configuración opcional va en `.env` (ver `.env.example`).
+Crea el primer administrador (ver abajo) y abre http://localhost:8090. La configuración opcional va en `.env` (ver `.env.example`).
 
 ## Docker
 
@@ -47,19 +47,44 @@ app/
   poligonos.py   lectura de KML/KMZ/GeoJSON/SHP/GPKG/CSV → Lotes.geojson
   spots.py       generar Spots.csv, previsualizar, hexágonos, solape, edición
   gpkg.py        exportación GeoPackage con estilo QGIS
-  storage.py     carpetas por proyecto (data/proyectos/{proyecto}/)
+  storage.py     carpetas por usuario y proyecto (data/usuarios/{id}/proyectos/{proyecto}/)
+  auth.py        usuarios, contraseñas y sesiones (SQLite)
+  cli.py         comandos: crear-admin, reset-password, listar
 frontend/
-  index.html, styles.css
+  index.html, login.html, styles.css
   js/core.js            proyecto, subidas y generación
+  js/usuarios.js        sesión, cambio de contraseña y panel de usuarios (admin)
   js/palmas_preview.js  vista previa del archivo de palmas en el navegador
   js/preview.js         mapa de previsualización (heredado de GeoMaps)
 ```
 
-## Pendiente para uso externo
+## Usuarios y acceso
 
-Por ahora no tiene usuarios ni login: cualquiera con acceso a la URL ve todos los proyectos. Antes de exponerla a terceros hay que agregar:
+- Toda la app exige iniciar sesión. No hay registro público: **el administrador crea los usuarios**.
+- **Proyectos privados**: cada usuario ve y edita solo sus proyectos. El administrador ve también los de los demás, con el nombre `usuario/proyecto`.
+- Un usuario nuevo, o uno al que el admin le resetea la contraseña, recibe una contraseña temporal y debe cambiarla en su primer ingreso.
+- Seguridad:
+  - contraseñas con argon2;
+  - sesión con cookie `HttpOnly` y `SameSite=Lax`, que dura `SESION_HORAS`;
+  - bloqueo de 5 minutos tras 5 intentos fallidos;
+  - cambiar o resetear una contraseña cierra las sesiones abiertas de ese usuario.
+- Los usuarios se guardan en `DATA_DIR/geospots.db` (SQLite) y los proyectos en `DATA_DIR/usuarios/{id}/proyectos/`.
+- Desde el panel **Usuarios**, el admin crea usuarios, edita su usuario y nombre, asigna contraseñas temporales, activa o desactiva usuarios y da o quita el rol de admin.
 
-- registro e inicio de sesión;
-- proyectos por usuario u organización;
-- HTTPS;
-- límites de uso.
+### Primer administrador
+
+La contraseña se pide por teclado:
+
+```bash
+docker exec -it geospots python -m app.cli crear-admin <usuario> --nombre "Tu nombre"
+```
+
+Sin Docker, el mismo comando es `venv/Scripts/python.exe -m app.cli crear-admin <usuario>`. Al crear el primer admin, los proyectos de la versión sin login (`data/proyectos/*`) pasan a ser suyos.
+
+Otros comandos:
+- `python -m app.cli listar`: lista los usuarios.
+- `python -m app.cli reset-password <usuario>`: sirve si el admin olvida su contraseña.
+
+### Antes de publicar en internet
+
+- Servir la app por **HTTPS** (por ejemplo, con un proxy) y poner `COOKIE_SECURE=true`.

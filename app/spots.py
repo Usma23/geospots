@@ -30,7 +30,7 @@ def _leer_csv(ruta) -> pd.DataFrame:
     return df.fillna("")
 
 
-def _catalogo_lotes(proyecto: str) -> tuple:
+def _catalogo_lotes(proyecto: storage.Proyecto) -> tuple:
     """(feature_collection | None, {nombre: lote_id}, {lote_id: nombre})."""
     ruta = storage.ruta(proyecto, storage.ARCHIVO_LOTES)
     if not ruta.exists():
@@ -46,7 +46,7 @@ def _catalogo_lotes(proyecto: str) -> tuple:
 
 # ------------------------------------------------------------ generar Spots.csv
 
-def generar_spots(proyecto: str, distancia: Optional[float] = None,
+def generar_spots(proyecto: storage.Proyecto, distancia: Optional[float] = None,
                   confirmar_sin_activa: bool = False) -> dict:
     ruta_palmas = storage.ruta(proyecto, storage.ARCHIVO_PALMAS)
     if not ruta_palmas.exists():
@@ -125,7 +125,7 @@ def generar_spots(proyecto: str, distancia: Optional[float] = None,
 
 # ------------------------------------------------------------ previsualización
 
-def previsualizar(proyecto: str) -> dict:
+def previsualizar(proyecto: storage.Proyecto) -> dict:
     ruta_spots = storage.ruta(proyecto, storage.ARCHIVO_SPOTS)
     if not ruta_spots.exists():
         return {"success": False, "message": "Primero genera los spots (Paso 2).", "lotes": [], "lineas": []}
@@ -229,7 +229,7 @@ def previsualizar(proyecto: str) -> dict:
             "total_dentro_lote": total_spots - total_fuera - sin_poligono,
             "total_fuera_lote": total_fuera,
             "total_sin_poligono_lote": sin_poligono,
-            "finca_id": proyecto,
+            "finca_id": proyecto.nombre,
             "fuente": "archivos",
         },
     }
@@ -280,7 +280,7 @@ def _calcular_solape(poligonos: list) -> int:
     return n
 
 
-def poligonos_spots(proyecto: str) -> dict:
+def poligonos_spots(proyecto: storage.Proyecto) -> dict:
     ruta_spots = storage.ruta(proyecto, storage.ARCHIVO_SPOTS)
     if not ruta_spots.exists():
         return {"success": False, "message": "Primero genera los spots (Paso 2).", "poligonos": []}
@@ -319,7 +319,7 @@ def poligonos_spots(proyecto: str) -> dict:
 
 # ------------------------------------------------------- edición desde el mapa
 
-def guardar_editados(proyecto: str, cambios: list, eliminados: list) -> dict:
+def guardar_editados(proyecto: storage.Proyecto, cambios: list, eliminados: list) -> dict:
     ruta_spots = storage.ruta(proyecto, storage.ARCHIVO_SPOTS)
     if not ruta_spots.exists():
         return {"success": False, "message": "No existe Spots.csv para este proyecto."}
@@ -367,7 +367,3 @@ def guardar_editados(proyecto: str, cambios: list, eliminados: list) -> dict:
     return {"success": True, "eliminados": n_elim, "editados": n_edit,
             "message": f"Guardado: {n_elim} eliminados, {n_edit} editados."}
 
-
-def exportar_spots_csv(proyecto: str) -> bytes:
-    ruta_spots = storage.ruta(proyecto, storage.ARCHIVO_SPOTS)
-    return ruta_spots.read_bytes()

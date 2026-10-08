@@ -65,8 +65,11 @@ function _actualizarEstadoProyecto(lista) {
     const p = proyectoActual();
     if (!el) return;
     if (!p) { el.innerHTML = ''; return; }
-    const slug = p.replace(/[^A-Za-z0-9_-]+/g, '_').replace(/^_+|_+$/g, '');
-    const info = (lista || []).find(x => x.proyecto === slug);
+    // Mismo saneado que el servidor; el admin puede escribir "usuario/proyecto".
+    const slug = p.split('/').map((parte, i, arr) => (i === arr.length - 1)
+        ? parte.replace(/[^A-Za-z0-9_-]+/g, '_').replace(/^_+|_+$/g, '')
+        : parte.trim()).join('/');
+    const info = (lista || []).find(x => x.proyecto.toLowerCase() === slug.toLowerCase());
     if (!info) {
         el.innerHTML = '<span style="color:#64748b;">Proyecto nuevo: se creará al subir el primer archivo.</span>';
         return;
@@ -192,6 +195,7 @@ async function generarSpots() {
 // ---------------------------------------------------------------- arranque
 
 document.addEventListener('DOMContentLoaded', async () => {
+    await cargarSesion();
     try {
         const cfg = await (await fetch(`${API_BASE}/api/config`)).json();
         document.getElementById('distanciaSiembra').value = cfg.distancia_siembra;

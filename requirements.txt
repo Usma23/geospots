@@ -10,3 +10,4 @@ geopandas
 pyproj
 shapely>=2.0
 geopy
+argon2-cffi

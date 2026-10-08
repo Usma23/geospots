@@ -20,7 +20,26 @@
         .formatos-box { background: #d1fae5; border: 2px solid #10b981; padding: 10px; border-radius: 6px; margin-bottom: 10px; font-size: 13px; }
         .formatos-box ul { margin: 6px 0 0 18px; padding: 0; }
         .formatos-box li { margin-bottom: 3px; }
+        .usuario-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+        .usuario-bar #usuario-nombre { font-weight: 600; color: #166534; margin-right: 4px; }
+        .btn-usuario { background: #f1f5f9; border: 1px solid #cbd5e1; color: #334155; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+        .btn-usuario:hover { background: #e2e8f0; }
+        .oculto { display: none !important; }
+        .modal-gs { position: fixed; inset: 0; background: rgba(15, 23, 42, .55); display: flex; align-items: flex-start; justify-content: center; padding: 40px 16px; z-index: 5000; overflow-y: auto; }
+        .modal-gs-caja { background: #fff; border-radius: 10px; width: 100%; padding: 20px 22px; box-shadow: 0 20px 50px rgba(0,0,0,.3); }
+        .modal-gs-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .modal-gs-head h3 { margin: 0; color: #166534; font-size: 18px; }
+        .modal-gs-cerrar { background: none; border: 0; font-size: 26px; line-height: 1; cursor: pointer; color: #64748b; }
+        .modal-gs label { display: block; font-size: 13px; font-weight: 600; margin: 10px 0 4px; }
+        .modal-gs-msg { min-height: 18px; margin: 8px 0; font-size: 13px; }
+        .modal-gs-msg.error { color: #b91c1c; }
+        .modal-gs-msg.ok { color: #15803d; }
+        .form-nuevo-usuario { display: grid; grid-template-columns: 1fr 1fr 1.3fr auto auto; gap: 8px; align-items: center; }
+        .acc-usuario { background: none; border: 1px solid #cbd5e1; border-radius: 5px; padding: 3px 8px; cursor: pointer; font-size: 12px; margin: 2px; }
         @media (max-width: 640px) {
+            .header { flex-direction: column; align-items: flex-start; gap: 12px; }
+            .usuario-bar { justify-content: flex-start; }
+            .form-nuevo-usuario { grid-template-columns: 1fr; }
             #preview-map { height: 420px !important; }
             #preview-confirm-section .btn { display: block; width: 100%; margin: 8px 0 0 0 !important; }
         }
@@ -34,6 +53,12 @@
                 <h1><i class="fas fa-seedling"></i> GeoSpots</h1>
                 <p class="subtitle">Gestor de spots: palmas, polígonos de lotes y previsualización - Versión <span
                         id="app-version">-</span></p>
+            </div>
+            <div class="usuario-bar" id="usuario-bar">
+                <span id="usuario-nombre"><i class="fas fa-user-circle"></i> -</span>
+                <button class="btn-usuario oculto" id="btn-admin-usuarios" onclick="abrirPanelUsuarios()"><i class="fas fa-users-cog"></i> Usuarios</button>
+                <button class="btn-usuario" onclick="abrirModal('modal-password')"><i class="fas fa-key"></i> Contraseña</button>
+                <button class="btn-usuario" onclick="cerrarSesion()"><i class="fas fa-sign-out-alt"></i> Salir</button>
             </div>
         </header>
 
@@ -485,6 +510,78 @@
         </footer>
     </div>
 
+    <!-- Cambiar contraseña -->
+    <div class="modal-gs oculto" id="modal-password" role="dialog" aria-modal="true" aria-labelledby="titulo-password">
+        <div class="modal-gs-caja" style="max-width: 420px;">
+            <div class="modal-gs-head">
+                <h3 id="titulo-password"><i class="fas fa-key"></i> Cambiar contraseña</h3>
+                <button class="modal-gs-cerrar" onclick="cerrarModal('modal-password')" aria-label="Cerrar">&times;</button>
+            </div>
+            <form onsubmit="event.preventDefault(); cambiarPassword();">
+                <label for="pw-actual">Contraseña actual</label>
+                <input type="password" id="pw-actual" class="form-control" autocomplete="current-password" required>
+                <label for="pw-nueva">Nueva contraseña (mínimo 8 caracteres)</label>
+                <input type="password" id="pw-nueva" class="form-control" autocomplete="new-password" minlength="8" required>
+                <label for="pw-nueva2">Repite la nueva contraseña</label>
+                <input type="password" id="pw-nueva2" class="form-control" autocomplete="new-password" minlength="8" required>
+                <div class="modal-gs-msg" id="pw-msg"></div>
+                <button type="submit" class="btn btn-success btn-block">Guardar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Administración de usuarios (solo admin) -->
+    <div class="modal-gs oculto" id="modal-usuarios" role="dialog" aria-modal="true" aria-labelledby="titulo-usuarios">
+        <div class="modal-gs-caja" style="max-width: 860px;">
+            <div class="modal-gs-head">
+                <h3 id="titulo-usuarios"><i class="fas fa-users-cog"></i> Usuarios</h3>
+                <button class="modal-gs-cerrar" onclick="cerrarModal('modal-usuarios')" aria-label="Cerrar">&times;</button>
+            </div>
+            <form class="form-nuevo-usuario" onsubmit="event.preventDefault(); crearUsuario();" autocomplete="off">
+                <input id="nu-usuario" class="form-control" placeholder="Usuario" required minlength="3" maxlength="40">
+                <input id="nu-nombre" class="form-control" placeholder="Nombre (opcional)">
+                <input id="nu-password" class="form-control" type="text" placeholder="Contraseña temporal (mín. 8)" required minlength="8" autocomplete="off">
+                <label style="display:flex;align-items:center;gap:6px;margin:0;font-size:13px;white-space:nowrap;"><input type="checkbox" id="nu-admin"> Admin</label>
+                <button type="submit" class="btn btn-success"><i class="fas fa-user-plus"></i> Crear</button>
+            </form>
+            <small style="color:#64748b;display:block;margin:4px 0 12px;">El usuario deberá cambiar la contraseña temporal en su primer ingreso. Cada usuario solo ve sus propios proyectos; tú ves los de todos como <code>usuario/proyecto</code>.</small>
+            <div class="modal-gs-msg" id="nu-msg"></div>
+            <div style="overflow-x:auto;">
+                <table class="table" style="width:100%;border-collapse:collapse;font-size:14px;">
+                    <thead><tr style="background:#f1f5f9;">
+                        <th style="padding:8px;text-align:left;">Usuario</th>
+                        <th style="padding:8px;text-align:left;">Nombre</th>
+                        <th style="padding:8px;">Rol</th>
+                        <th style="padding:8px;">Estado</th>
+                        <th style="padding:8px;text-align:left;">Último ingreso</th>
+                        <th style="padding:8px;">Acciones</th>
+                    </tr></thead>
+                    <tbody id="tabla-usuarios"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Editar usuario (solo admin) -->
+    <div class="modal-gs oculto" id="modal-editar-usuario" role="dialog" aria-modal="true" aria-labelledby="titulo-editar-usuario" style="z-index: 5100;">
+        <div class="modal-gs-caja" style="max-width: 420px;">
+            <div class="modal-gs-head">
+                <h3 id="titulo-editar-usuario"><i class="fas fa-user-edit"></i> Editar usuario</h3>
+                <button class="modal-gs-cerrar" onclick="cerrarModal('modal-editar-usuario')" aria-label="Cerrar">&times;</button>
+            </div>
+            <form onsubmit="event.preventDefault(); guardarEdicionUsuario();" autocomplete="off">
+                <input type="hidden" id="eu-id">
+                <label for="eu-usuario">Usuario (para iniciar sesión)</label>
+                <input id="eu-usuario" class="form-control" required minlength="3" maxlength="40">
+                <label for="eu-nombre">Nombre</label>
+                <input id="eu-nombre" class="form-control" maxlength="80">
+                <small id="eu-aviso" style="color:#64748b;display:block;margin-top:8px;">Si cambias el usuario, deberá iniciar sesión otra vez con el nuevo. Sus proyectos no se mueven.</small>
+                <div class="modal-gs-msg" id="eu-msg"></div>
+                <button type="submit" class="btn btn-success btn-block">Guardar</button>
+            </form>
+        </div>
+    </div>
+
     <div id="loadingOverlay" class="loading-overlay">
         <div class="loading-spinner">
             <i class="fas fa-spinner fa-spin fa-3x"></i>
@@ -493,9 +590,10 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <script src="/static/js/core.js?v=0.1.0"></script>
-    <script src="/static/js/palmas_preview.js?v=0.1.0"></script>
-    <script src="/static/js/preview.js?v=0.1.0"></script>
+    <script src="/static/js/core.js?v=0.2.0"></script>
+    <script src="/static/js/usuarios.js?v=0.2.1"></script>
+    <script src="/static/js/palmas_preview.js?v=0.2.0"></script>
+    <script src="/static/js/preview.js?v=0.2.0"></script>
 </body>
 
 </html>

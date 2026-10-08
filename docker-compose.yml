@@ -9,6 +9,9 @@ services:
     environment:
       - DISTANCIA_SIEMBRA=9
       - MAX_UPLOAD_MB=200
+      - SESION_HORAS=12
+      # true cuando se publique con HTTPS
+      - COOKIE_SECURE=false
     volumes:
       - geospots_data:/app/data
     restart: unless-stopped
