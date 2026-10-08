@@ -1,0 +1,17 @@
+services:
+  geospots:
+    build: .
+    image: geospots:latest
+    container_name: geospots
+    # GeoMaps usa el 8000; GeoSpots queda en el 8090 del host.
+    ports:
+      - "8090:8080"
+    environment:
+      - DISTANCIA_SIEMBRA=9
+      - MAX_UPLOAD_MB=200
+    volumes:
+      - geospots_data:/app/data
+    restart: unless-stopped
+
+volumes:
+  geospots_data:
