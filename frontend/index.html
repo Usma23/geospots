@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeoSpots - Gestor de spots</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.fullscreen@2.4.0/Control.FullScreen.css" />
+    <script src="https://unpkg.com/leaflet.fullscreen@2.4.0/Control.FullScreen.js"></script>
+    <style>
+        .card { overflow: visible !important; }
+        .table tbody tr { transition: background-color 0.2s ease; }
+        .table tbody tr:hover { background: #f8fafc; }
+        .proyecto-bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+        .proyecto-bar input { max-width: 360px; }
+        .formatos-box { background: #d1fae5; border: 2px solid #10b981; padding: 10px; border-radius: 6px; margin-bottom: 10px; font-size: 13px; }
+        .formatos-box ul { margin: 6px 0 0 18px; padding: 0; }
+        .formatos-box li { margin-bottom: 3px; }
+        @media (max-width: 640px) {
+            #preview-map { height: 420px !important; }
+            #preview-confirm-section .btn { display: block; width: 100%; margin: 8px 0 0 0 !important; }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-content">
+                <h1><i class="fas fa-seedling"></i> GeoSpots</h1>
+                <p class="subtitle">Gestor de spots: palmas, polígonos de lotes y previsualización - Versión <span
+                        id="app-version">-</span></p>
+            </div>
+        </header>
+
+        <main style="padding: 20px 0;">
+            <!-- Proyecto -->
+            <div class="card">
+                <div class="card-header" style="background: linear-gradient(135deg, #14532d 0%, #166534 100%); color: white;">
+                    <i class="fas fa-folder-open"></i> Proyecto
+                </div>
+                <div class="card-body">
+                    <div class="proyecto-bar">
+                        <label for="fincaId" style="margin:0;font-weight:bold;">Nombre del proyecto / finca:</label>
+                        <input type="text" id="fincaId" class="form-control" list="lista-proyectos"
+                            placeholder="Ej: finca_la_esperanza" autocomplete="off">
+                        <datalist id="lista-proyectos"></datalist>
+                    </div>
+                    <small class="form-text" style="color:#64748b;">Cada proyecto guarda sus propios archivos. Escribe uno nuevo o elige uno existente.</small>
+                    <div id="estado-proyecto" style="margin-top:8px;font-size:13px;"></div>
+                </div>
+            </div>
+
+            <!-- Paso 1: Cargar Archivos -->
+            <div class="card">
+                <div class="card-header" style="background: linear-gradient(135deg, #166534 0%, #15803d 100%); color: white;">
+                    <i class="fas fa-upload"></i> Paso 1: Cargar Archivos
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label><i class="fas fa-file-excel"></i> Archivo de Palmas (CSV o Excel):</label>
+                        <small class="form-text" style="margin-bottom: 5px;">
+                            <strong>Formatos aceptados:</strong> .csv, .xlsx, .xls
+                        </small>
+                        <div
+                            style="background: #dbeafe; border: 2px solid #3b82f6; padding: 10px; border-radius: 6px; margin-bottom: 10px;">
+                            <strong style="color: #1e40af; display: block; margin-bottom: 8px;">
+                                <i class="fas fa-list-ol"></i> Columnas OBLIGATORIAS:
+                            </strong>
+                            <div style="display: flex; flex-direction: column; gap: 5px; font-size: 13px;">
+                                <div
+                                    style="background: white; padding: 6px 10px; border-radius: 4px; border-left: 4px solid #3b82f6;">
+                                    <strong style="color: #1e40af; margin-right: 8px;">1.</strong>
+                                    <code
+                                        style="background: #f3f4f6; padding: 3px 8px; border-radius: 3px; font-weight: bold;">latitud</code>
+                                    <span style="color: #6b7280; margin-left: 5px; font-size: 11px;">→
+                                        Coordenada latitud</span>
+                                </div>
+                                <div
+                                    style="background: white; padding: 6px 10px; border-radius: 4px; border-left: 4px solid #3b82f6;">
+                                    <strong style="color: #1e40af; margin-right: 8px;">2.</strong>
+                                    <code
+                                        style="background: #f3f4f6; padding: 3px 8px; border-radius: 3px; font-weight: bold;">longitud</code>
+                                    <span style="color: #6b7280; margin-left: 5px; font-size: 11px;">→
+                                        Coordenada longitud</span>
+                                </div>
+                                <div
+                                    style="background: white; padding: 6px 10px; border-radius: 4px; border-left: 4px solid #3b82f6;">
+                                    <strong style="color: #1e40af; margin-right: 8px;">3.</strong>
+                                    <code
+                                        style="background: #f3f4f6; padding: 3px 8px; border-radius: 3px; font-weight: bold;">linea</code>
+                                    <span style="color: #6b7280; margin-left: 5px; font-size: 11px;">→
+                                        Número de línea</span>
+                                </div>
+                                <div
+                                    style="background: white; padding: 6px 10px; border-radius: 4px; border-left: 4px solid #3b82f6;">
+                                    <strong style="color: #1e40af; margin-right: 8px;">4.</strong>
+                                    <code
+                                        style="background: #f3f4f6; padding: 3px 8px; border-radius: 3px; font-weight: bold;">palma</code>
+                                    <span style="color: #6b7280; margin-left: 5px; font-size: 11px;">→
+                                        Número de palma</span>
+                                </div>
+                                <div
+                                    style="background: white; padding: 6px 10px; border-radius: 4px; border-left: 4px solid #3b82f6;">
+                                    <strong style="color: #1e40af; margin-right: 8px;">5.</strong>
+                                    <code
+                                        style="background: #f3f4f6; padding: 3px 8px; border-radius: 3px; font-weight: bold;">lote</code>
+                                    <span style="color: #6b7280; margin-left: 5px; font-size: 11px;">→
+                                        Nombre del lote</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div
+                            style="background: #fef3c7; border: 2px solid #f59e0b; padding: 10px; border-radius: 6px; margin-bottom: 10px;">
+                            <strong style="color: #92400e; display: block; margin-bottom: 8px;">
+                                <i class="fas fa-list-ol"></i> Columnas OPCIONALES:
+                            </strong>
+                            <div style="display: flex; flex-direction: column; gap: 5px; font-size: 13px;">
+                                <div
+                                    style="background: white; padding: 6px 10px; border-radius: 4px; border-left: 4px solid #f59e0b;">
+                                    <code
+                                        style="background: #f3f4f6; padding: 3px 8px; border-radius: 3px; font-weight: bold;">activa</code>
+                                    <span style="color: #6b7280; margin-left: 5px; font-size: 11px;">→
+                                        Llénala con <code>Activa</code> = palma viva (spot <strong>con planta</strong>) o
+                                        <code>Espacio</code> = sin palma (el spot existe, pero sin planta).
+                                        Si la columna no existe, el proceso <strong>pedirá confirmación</strong> y marcará todos como activos.</span>
+                                </div>
+                                <div
+                                    style="background: white; padding: 6px 10px; border-radius: 4px; border-left: 4px solid #f59e0b;">
+                                    <code
+                                        style="background: #f3f4f6; padding: 3px 8px; border-radius: 3px; font-weight: bold;">nombre</code>
+                                    <span style="color: #6b7280; margin-left: 5px; font-size: 11px;">→
+                                        Nombre personalizado del spot/planta. Si va vacío se usa <code>L{linea}P{palma}</code>.</span>
+                                </div>
+                            </div>
+                        </div>
+                        <input type="file" id="filePalmas" class="form-control" accept=".csv,.xlsx,.xls" onchange="procesarArchivoPalmas(this)">
+
+                        <div style="display:flex; align-items:center; gap:8px; margin: 6px 0;">
+                            <input type="checkbox" id="sobrescribir-palmas" style="width:16px; height:16px; cursor:pointer;">
+                            <label for="sobrescribir-palmas" style="margin:0; font-size:13px; cursor:pointer; color:#6b7280;">
+                                <i class="fas fa-redo" style="color:#f59e0b;"></i>
+                                Sobrescribir si ya existe en el proyecto
+                            </label>
+                        </div>
+                        <button class="btn btn-success btn-block" onclick="subirArchivo('palmas')">
+                            <i class="fas fa-cloud-upload-alt"></i> Subir Palmas
+                        </button>
+                        <div id="statusPalmas" class="file-status"></div>
+                        <div id="status-carga-palmas" class="file-status"></div>
+
+
+                        <!-- Previsualización de Datos (Nuevo) -->
+                        <div id="preview-palmas-container" style="display: none; margin-top: 20px;">
+                            <div class="card" style="border: 1px solid #e5e7eb; box-shadow: none; margin-bottom: 0;">
+                                <div class="card-header" style="background: #f8fafc; color: #334155; font-size: 14px; padding: 10px 15px;">
+                                    <i class="fas fa-table"></i> Previsualización de contenido del archivo: <span id="preview-count" class="badge badge-info" style="background: #166534; color: white;">0 registros</span>
+                                </div>
+                                <div class="card-body" style="padding: 0; max-height: 400px; overflow-y: auto;">
+                                    <table id="preview-palmas-table" class="table table-sm" style="margin-bottom: 0; font-size: 12px; width: 100%; border-collapse: collapse;">
+                                        <thead style="position: sticky; top: 0; background: #f1f5f9; z-index: 1;">
+                                            <tr>
+                                                <th style="padding: 8px; text-align: left; border-bottom: 2px solid #dee2e6;">#</th>
+                                                <th style="padding: 8px; text-align: left; border-bottom: 2px solid #dee2e6;">Latitud</th>
+                                                <th style="padding: 8px; text-align: left; border-bottom: 2px solid #dee2e6;">Longitud</th>
+
+                                                <th style="padding: 8px; text-align: left; border-bottom: 2px solid #dee2e6;">Línea</th>
+                                                <th style="padding: 8px; text-align: left; border-bottom: 2px solid #dee2e6;">Palma</th>
+                                                <th style="padding: 8px; text-align: left; border-bottom: 2px solid #dee2e6;">Lote</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- JS populates this -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div id="preview-warnings" style="display: none; padding: 10px; border-radius: 4px; margin-top: 10px;"></div>
+                            
+                            <div class="alert alert-info mt-3" style="font-size: 13px; background: #eff6ff; color: #1e40af; padding: 10px; border-radius: 4px; border-left: 4px solid #3b82f6;">
+                                <i class="fas fa-info-circle"></i> <b>Nota:</b> Se muestran los primeros registros del archivo seleccionado. 
+                            </div>
+                        </div>
+
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-draw-polygon"></i> Archivo de Polígonos de Lotes:</label>
+                        <div class="formatos-box">
+                            <strong style="color: #065f46;"><i class="fas fa-list"></i> Formatos aceptados:</strong>
+                            <ul>
+                                <li><strong>KML / KMZ</strong> (Google Earth): un polígono por lote; el nombre del Placemark es el nombre del lote.</li>
+                                <li><strong>GeoJSON</strong>, <strong>Shapefile</strong> (.zip con .shp, .shx, .dbf y .prj) o <strong>GeoPackage</strong> (.gpkg). Se reproyectan a WGS84 si vienen en otro sistema.</li>
+                                <li><strong>CSV / Excel de vértices</strong>: columnas <code>lote</code>, <code>latitud</code>, <code>longitud</code> (opcional <code>orden</code>); cada lote es el anillo de sus vértices.</li>
+                            </ul>
+                            <div style="margin-top:6px;color:#065f46;">El nombre del lote debe coincidir con la columna <code>lote</code> del archivo de palmas.</div>
+                        </div>
+                        <input type="file" id="fileLotes" class="form-control"
+                            accept=".kml,.kmz,.geojson,.json,.zip,.gpkg,.csv,.xlsx,.xls">
+                        <div style="display:flex; align-items:center; gap:8px; margin: 8px 0; flex-wrap: wrap;">
+                            <label for="campoNombreLote" style="margin:0; font-size:13px; color:#475569;">Campo con el nombre del lote (opcional):</label>
+                            <input type="text" id="campoNombreLote" class="form-control" placeholder="auto: nombre / name / lote"
+                                style="max-width: 240px; padding: 6px 10px;">
+                        </div>
+                        <div style="display:flex; align-items:center; gap:8px; margin: 6px 0;">
+                            <input type="checkbox" id="sobrescribir-lotes" style="width:16px; height:16px; cursor:pointer;">
+                            <label for="sobrescribir-lotes" style="margin:0; font-size:13px; cursor:pointer; color:#6b7280;">
+                                <i class="fas fa-redo" style="color:#f59e0b;"></i>
+                                Sobrescribir si ya existe en el proyecto
+                            </label>
+                        </div>
+                        <button class="btn btn-success btn-block" onclick="subirArchivo('lotes')">
+                            <i class="fas fa-cloud-upload-alt"></i> Subir Polígonos
+                        </button>
+                        <div id="statusLotes" class="file-status"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Paso 2: Generar Spots -->
+            <div class="card">
+                <div class="card-header" style="background: linear-gradient(135deg, #15803d 0%, #22c55e 100%); color: white;">
+                    <i class="fas fa-cogs"></i> Paso 2: Generar Spots
+                </div>
+                <div class="card-body">
+                    <div class="info-box" style="margin-bottom: 15px;">
+                        <p><i class="fas fa-info-circle"></i> Une el archivo de palmas con los polígonos de lotes y genera
+                            <strong>Spots.csv</strong> (<code>spot_id</code>, <code>lote_id</code>, <code>linea</code>,
+                            <code>posicion</code>, <code>activa</code>). Los lotes de palmas sin polígono se conservan y se avisan.</p>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom: 12px; flex-wrap: wrap;">
+                        <label for="distanciaSiembra" style="margin:0; font-weight:bold;"><i class="fas fa-ruler"></i> Distancia de siembra (m):</label>
+                        <input type="number" id="distanciaSiembra" class="form-control" value="9" min="1" max="50" step="0.5"
+                            style="max-width: 110px;" title="Diámetro del hexágono de cada spot">
+                    </div>
+                    <button class="btn btn-primary btn-block" onclick="generarSpots()" style="font-size: 16px; padding: 15px;">
+                        <i class="fas fa-file-csv"></i> Generar Spots
+                    </button>
+                    <div id="statusGenerarCSV" class="file-status"></div>
+                </div>
+            </div>
+
+            <!-- Paso 3: Previsualizar -->
+            <div class="card">
+                <div class="card-header" style="background: linear-gradient(135deg, #166534 0%, #14532d 100%); color: white;">
+                    <i class="fas fa-eye"></i> Paso 3: Previsualizar
+                </div>
+                <div class="card-body">
+                    <div class="info-box" style="margin-bottom: 15px;">
+                        <p><i class="fas fa-lightbulb"></i> Muestra en el mapa los polígonos de lotes y los spots, con
+                            validaciones de líneas, distancias, alineación, solape de hexágonos y spots fuera de su lote.</p>
+                    </div>
+                    <button class="btn btn-info btn-block" onclick="previsualizarArchivos()" style="font-size: 16px; padding: 15px;">
+                        <i class="fas fa-eye"></i> 🔍 Previsualizar en el Mapa
+                    </button>
+                </div>
+            </div>
+
+            <div class="card" id="previsualizacion-panel" style="display: none;">
+                <div class="card-header"
+                    style="background: linear-gradient(135deg, #166534 0%, #15803d 100%); color: white;">
+                    <span id="preview-panel-title"><i class="fas fa-eye"></i> Previsualización de Spots y Polígonos</span>
+                    <button class="btn btn-sm float-right" onclick="cerrarPrevisualizacion()"
+                        style="background: rgba(255,255,255,0.2); color: white; border: none;">
+                        <i class="fas fa-times"></i> Cerrar
+                    </button>
+                </div>
+                <div class="card-body">
+                    <!-- Resumen -->
+                    <div id="preview-resumen"
+                        style="background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                        <h3 style="margin-top: 0; color: #166534;"><i class="fas fa-chart-bar"></i> Resumen
+                            del Proceso</h3>
+                        <div
+                            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-top: 15px;">
+                            <div
+                                style="background: white; padding: 15px; border-radius: 8px; text-align: center;">
+                                <i class="fas fa-layer-group" style="font-size: 24px; color: #166534;"></i>
+                                <div style="font-size: 32px; font-weight: bold; color: #2d3748; margin: 10px 0;"
+                                    id="preview-total-lotes">-</div>
+                                <div style="color: #718096; font-size: 14px;">Lotes</div>
+                            </div>
+                            <div
+                                style="background: white; padding: 15px; border-radius: 8px; text-align: center;">
+                                <i class="fas fa-grip-lines" style="font-size: 24px; color: #15803d;"></i>
+                                <div style="font-size: 32px; font-weight: bold; color: #2d3748; margin: 10px 0;"
+                                    id="preview-total-lineas">-</div>
+                                <div style="color: #718096; font-size: 14px;">Líneas</div>
+                            </div>
+                            <div
+                                style="background: white; padding: 15px; border-radius: 8px; text-align: center;">
+                                <i class="fas fa-map-marker-alt"
+                                    style="font-size: 24px; color: #22c55e;"></i>
+                                <div style="font-size: 32px; font-weight: bold; color: #2d3748; margin: 10px 0;"
+                                    id="preview-total-spots">-</div>
+                                <div style="color: #718096; font-size: 14px;">Spots</div>
+                            </div>
+                            <div
+                                style="background: white; padding: 15px; border-radius: 8px; text-align: center;">
+                                <i class="fas fa-check-circle" style="font-size: 24px; color: #16a34a;"></i>
+                                <div style="font-size: 32px; font-weight: bold; color: #2d3748; margin: 10px 0;"
+                                    id="preview-dentro-lote">-</div>
+                                <div style="color: #718096; font-size: 14px;">Dentro de su lote</div>
+                            </div>
+                            <div
+                                style="background: white; padding: 15px; border-radius: 8px; text-align: center;">
+                                <i class="fas fa-exclamation-triangle"
+                                    style="font-size: 24px; color: #dc2626;"></i>
+                                <div style="font-size: 32px; font-weight: bold; color: #2d3748; margin: 10px 0;"
+                                    id="preview-fuera-lote">-</div>
+                                <div style="color: #718096; font-size: 14px;">Fuera de su lote</div>
+                            </div>
+                            <div
+                                style="background: white; padding: 15px; border-radius: 8px; text-align: center;">
+                                <i class="fas fa-question-circle"
+                                    style="font-size: 24px; color: #64748b;"></i>
+                                <div style="font-size: 32px; font-weight: bold; color: #2d3748; margin: 10px 0;"
+                                    id="preview-sin-poligono-lote">-</div>
+                                <div style="color: #718096; font-size: 14px;">Spots de lotes sin polígono</div>
+                            </div>
+                        </div>
+                        <div
+                            style="margin-top: 15px; padding: 15px; background: white; border-radius: 8px;">
+                            <p style="margin: 0; color: #4a5568;"><strong>Proyecto:</strong> <span
+                                    id="preview-finca-id">-</span></p>
+                            <p style="margin: 10px 0 0 0; color: #4a5568;"><strong>Polígonos de lote cargados:</strong>
+                                <span id="preview-lotes-poligono">-</span></p>
+                        </div>
+                    </div>
+
+                    <!-- Mapa de Previsualización -->
+                    <div id="preview-fullscreen-wrap" style="margin-bottom: 20px;">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <h4 style="color: #2d3748; margin: 0;">
+                                <i class="fas fa-map"></i> Mapa de Previsualización
+                            </h4>
+                            <div id="preview-map-controls" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                                <label style="font-weight: bold; color: #4a5568; margin: 0;">
+                                    <i class="fas fa-eye"></i> Modo de Visualización:
+                                </label>
+                                <select id="preview-view-mode" class="form-control"
+                                    style="width: auto; display: inline-block;"
+                                    onchange="cambiarModoVisualizacion()">
+                                    <option value="lineas">🔗 Por Líneas (conectadas)</option>
+                                    <option value="lineas-consecutivas">🔍 Líneas con Validación de
+                                        Consecutividad</option>
+                                    <option value="lineas-distancias">📏 Líneas con Validación de Distancia
+                                    </option>
+                                    <option value="lotes">📍 Por Lotes (puntos)</option>
+                                    <option value="poligonos">🔷 Polígonos de Spots</option>
+                                    <option value="alineacion">🚩 Errores de alineación (línea / ángulo / orden)</option>
+                                    <option value="plantas">🌱 Plantas (activas / espacios)</option>
+                                    <option value="fuera-lote">📐 Spots fuera de su lote</option>
+                                </select>
+                                <div id="preview-distancia-container"
+                                    style="display: none; margin-left: 15px;">
+                                    <label style="font-weight: bold; color: #4a5568; margin: 0;">
+                                        <i class="fas fa-ruler"></i> Distancia Máxima (m):
+                                    </label>
+                                    <input type="number" id="preview-distancia-maxima" class="form-control"
+                                        style="width: 100px; display: inline-block;" value="8" min="1"
+                                        max="100" step="0.5" onchange="actualizarFiltroDistancia()"
+                                        title="Distancia máxima permitida entre puntos consecutivos en metros">
+                                </div>
+                                <div style="position: relative; margin-left: 15px;">
+                                    <button class="btn btn-sm" onclick="togglePanelKML()"
+                                        title="Descargar uno o varios modos como KML (tal como se previsualizan)"
+                                        style="background: #3b82f6; color: white; padding: 6px 12px; border-radius: 6px;">
+                                        <i class="fas fa-download"></i> Descargar KML ▾
+                                    </button>
+                                    <div id="panel-kml-modos"
+                                        style="display: none; position: absolute; z-index: 1000; top: 110%; left: 0; background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,0.15); padding: 12px; min-width: 260px;">
+                                        <div style="font-weight: bold; color: #334155; margin-bottom: 8px; font-size: 13px;">
+                                            Selecciona los modos a descargar:
+                                        </div>
+                                        <div style="display: flex; flex-direction: column; gap: 5px; font-size: 13px; color: #475569;">
+                                            <label style="margin:0;cursor:pointer;"><input type="checkbox" class="kml-modo" value="lineas"> 🔗 Por Líneas</label>
+                                            <label style="margin:0;cursor:pointer;"><input type="checkbox" class="kml-modo" value="lineas-consecutivas"> 🔍 Líneas · Consecutividad</label>
+                                            <label style="margin:0;cursor:pointer;"><input type="checkbox" class="kml-modo" value="lineas-distancias"> 📏 Líneas · Distancia</label>
+                                            <label style="margin:0;cursor:pointer;"><input type="checkbox" class="kml-modo" value="lotes"> 📍 Por Lotes</label>
+                                            <label style="margin:0;cursor:pointer;"><input type="checkbox" class="kml-modo" value="poligonos"> 🔷 Polígonos de Spots</label>
+                                            <label style="margin:0;cursor:pointer;"><input type="checkbox" class="kml-modo" value="alineacion"> 🚩 Errores de alineación</label>
+                                            <label style="margin:0;cursor:pointer;"><input type="checkbox" class="kml-modo" value="plantas"> 🌱 Plantas (activas/espacios)</label>
+                                            <label style="margin:0;cursor:pointer;"><input type="checkbox" class="kml-modo" value="fuera-lote"> 📐 Spots fuera de su lote</label>
+                                        </div>
+                                        <button class="btn btn-sm" onclick="descargarPreviewGPKGSeleccionados()"
+                                            title="GeoPackage con estilo QGIS embebido (círculos y colores por modo)"
+                                            style="background: #16a34a; color: white; padding: 6px 12px; border-radius: 6px; margin-top: 10px; width: 100%;">
+                                            <i class="fas fa-download"></i> GeoPackage (QGIS)
+                                        </button>
+                                        <button class="btn btn-sm" onclick="descargarPreviewKMLSeleccionados()"
+                                            title="KML (mejor para Google Earth)"
+                                            style="background: #3b82f6; color: white; padding: 6px 12px; border-radius: 6px; margin-top: 6px; width: 100%;">
+                                            <i class="fas fa-download"></i> KML (Google Earth)
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="preview-edit-toolbar" style="display:flex; gap:8px; align-items:center; margin: 6px 0; flex-wrap:wrap;">
+                            <button id="btn-edicion-spots" class="btn btn-sm" onclick="toggleEdicionSpots()"
+                                title="Activar la edición de puntos: clic en un punto para editar sus datos o eliminarlo"
+                                style="background:#7c3aed;color:#fff;padding:6px 12px;border-radius:6px;">
+                                <i class="fas fa-pen"></i> Editar puntos: OFF
+                            </button>
+                            <button id="btn-guardar-edicion" class="btn btn-sm" onclick="guardarEdicionesSpots()"
+                                title="Guardar los cambios en el Spots.csv del proyecto"
+                                style="display:none;background:#16a34a;color:#fff;padding:6px 12px;border-radius:6px;">
+                                <i class="fas fa-save"></i> Guardar cambios
+                            </button>
+                            <button id="btn-cancelar-edicion" class="btn btn-sm" onclick="cancelarEdicionesSpots()"
+                                title="Descartar los cambios sin guardar y recargar la previsualización"
+                                style="display:none;background:#64748b;color:#fff;padding:6px 12px;border-radius:6px;">
+                                <i class="fas fa-undo"></i> Cancelar cambios
+                            </button>
+                            <span id="edicion-spots-info" style="font-size:12px;color:#64748b;"></span>
+                        </div>
+                        <div id="preview-mode-description"
+                            style="padding: 10px; background: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 4px; margin-bottom: 10px;">
+                            <p style="margin: 0; font-size: 13px; color: #1e40af;">
+                                <strong>Modo Líneas:</strong> Muestra líneas conectando los spots desde la
+                                posición #1 hasta la última posición de cada línea.
+                            </p>
+                        </div>
+                        <div id="preview-map"
+                            style="height: 600px; width: 100%; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                        </div>
+                        <div id="preview-legend"
+                            style="margin-top: 10px; padding: 15px; background: #f7fafc; border-radius: 8px;">
+                            <!-- Leyenda dinámica se carga desde JavaScript -->
+                        </div>
+                    </div>
+
+                    <!-- Tabla de Lotes -->
+                    <div id="preview-lotes-section" style="overflow-x: auto;">
+                        <h4 style="color: #166534; margin-bottom: 15px;"><i class="fas fa-table"></i>
+                            Detalle de Lotes y Líneas</h4>
+                        <table class="table"
+                            style="width: 100%; border-collapse: collapse; background: white;">
+                            <thead
+                                style="background: linear-gradient(135deg, #166534 0%, #15803d 100%); color: white;">
+                                <tr>
+                                    <th style="padding: 12px; text-align: center;">#</th>
+                                    <th style="padding: 12px; text-align: left;">Lote</th>
+                                    <th style="padding: 12px; text-align: center;">Polígono</th>
+                                    <th style="padding: 12px; text-align: center;">Líneas</th>
+                                    <th style="padding: 12px; text-align: center;">Spots</th>
+                                    <th style="padding: 12px; text-align: center;">Dentro del lote</th>
+                                    <th style="padding: 12px; text-align: center;">Fuera del lote</th>
+                                </tr>
+                            </thead>
+                            <tbody id="preview-lotes-table">
+                                <tr>
+                                    <td colspan="7"
+                                        style="text-align: center; padding: 20px; color: #a0aec0;">
+                                        <i class="fas fa-spinner fa-spin"></i> Cargando datos...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="preview-confirm-section" style="margin-top: 20px; text-align: center;">
+                        <a class="btn btn-success btn-lg" id="btn-descargar-spots" href="#"
+                            onclick="this.href=API_BASE + '/api/descargar/spots?proyecto=' + encodeURIComponent(proyectoActual())"
+                            style="padding: 15px 40px; font-size: 16px; text-decoration: none;">
+                            <i class="fas fa-download"></i> Descargar Spots.csv
+                        </a>
+                        <button class="btn btn-secondary btn-lg" onclick="cerrarPrevisualizacion()"
+                            style="padding: 15px 40px; font-size: 16px; margin-left: 10px;">
+                            <i class="fas fa-times"></i> Cerrar
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+
+        <footer class="footer">
+            <p>GeoSpots</p>
+        </footer>
+    </div>
+
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-spinner">
+            <i class="fas fa-spinner fa-spin fa-3x"></i>
+            <p id="loadingText">Procesando...</p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="/static/js/core.js?v=0.1.0"></script>
+    <script src="/static/js/palmas_preview.js?v=0.1.0"></script>
+    <script src="/static/js/preview.js?v=0.1.0"></script>
+</body>
+
+</html>
